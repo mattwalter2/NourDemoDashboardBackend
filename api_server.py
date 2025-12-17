@@ -206,7 +206,7 @@ def vapi_webhook():
 
                 print(f"🔧 Tool Call: {function_name} with args {function_args}")
 
-                if function_name == 'book_appointment':
+                if function_name == 'schedule_dental_appointment':
                     # Parse arguments (they might come as string or dict)
                     import json
                     if isinstance(function_args, str):
