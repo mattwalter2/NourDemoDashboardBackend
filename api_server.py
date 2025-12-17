@@ -8,12 +8,15 @@ import requests
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
+from zoneinfo import ZoneInfo
 
 # Load environment variables from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React app
+
+CLINIC_TZ = "America/New_York"
 
 @app.route('/api/initiate-call', methods=['POST'])
 def initiate_call():
@@ -228,6 +231,11 @@ def vapi_webhook():
                             
                             # start_datetime_str = f"{day}T{time_iso}:00"  <-- Removed
                             start_time = datetime.fromisoformat(time_iso)
+
+                            # Vapi sends no timezone → assume Eastern Time
+                            if start_time.tzinfo is None:
+                                start_time = start_time.replace(tzinfo=ZoneInfo(CLINIC_TZ))
+
                             end_time = start_time + timedelta(hours=1)
                             
                             event = {
