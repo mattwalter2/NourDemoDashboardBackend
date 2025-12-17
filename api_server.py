@@ -187,7 +187,7 @@ def get_appointments():
         print(f"❌ Error fetching appointments: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/vapi/webhook', methods=['POST'])
+@app.route('/vapi/tool/schedule-appointment', methods=['POST'])
 def vapi_webhook():
     """Handle Vapi tool calls."""
     try:
