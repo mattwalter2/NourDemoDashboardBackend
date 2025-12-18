@@ -342,8 +342,8 @@ def send_whatsapp_message():
             return jsonify({'error': 'Missing to or text'}), 400
 
         # Send to Meta
-        token = os.getenv('WHATSAPP_ACCESS_TOKEN')
-        phone_id = os.getenv('WHATSAPP_PHONE_ID')
+        token = os.getenv('VITE_WHATSAPP_ACCESS_TOKEN')
+        phone_id = os.getenv('VITE_WHATSAPP_PHONE_ID')
         
         if not token or not phone_id:
              # Fallback for demo if env vars missing
@@ -502,7 +502,7 @@ def send_instagram_message():
         if not to_id or not message_text:
             return jsonify({'error': 'Missing to or text'}), 400
 
-        token = os.getenv('INSTAGRAM_ACCESS_TOKEN')
+        token = os.getenv('VITE_INSTAGRAM_ACCESS_TOKEN')
         
         if not token:
              print("⚠️ Missing Instagram Access Token, simulating send.")
@@ -544,12 +544,9 @@ def get_meta_campaigns():
     """Fetch campaigns from Meta Ads via Backend Proxy."""
     try:
         # Check standard and VITE_ prefixed variables (in case user copied frontend env)
-        access_token = (
-            os.getenv('VITE_VITE_META_ACCESS_TOKEN') or 
-            os.getenv('VITE_INSTAGRAM_ACCESS_TOKEN')
-        )
+        access_token = os.getenv('VITE_META_ACCESS_TOKEN')
         
-        ad_account_id = os.getenv('VITE_VITE_META_AD_ACCOUNT_ID')
+        ad_account_id = os.getenv('VITE_META_AD_ACCOUNT_ID')
 
         if not access_token or not ad_account_id:
             # Fallback for demo/testing if env vars missing
