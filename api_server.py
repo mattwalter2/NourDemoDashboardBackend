@@ -18,13 +18,15 @@ CORS(app)  # Enable CORS for React app
 
 CLINIC_TZ = "America/New_York"
 
-@app.route('/api/initiate-call', methods=['POST'])
+@app.route('api/vapi/initiate-call', methods=['POST'])
 def initiate_call():
     try:
         data = request.json
         phone_number = data.get('phoneNumber')
         name = data.get('name', 'Test User')
         
+        variables = data.get('variables', {})
+
         if not phone_number:
             return jsonify({'error': 'Phone number is required'}), 400
 
@@ -49,6 +51,12 @@ def initiate_call():
                 'name': name
             }
         }
+
+        # Inject context variables if present
+        if variables:
+            payload['assistantOverrides'] = {
+                'variableValues': variables
+            }
         
         print(f"Initiating call to {phone_number}...")
         response = requests.post('https://api.vapi.ai/call/phone', json=payload, headers=headers)
@@ -275,6 +283,263 @@ def vapi_webhook():
         print(f"❌ Webhook Error: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+# In-memory message store (for demo purposes)
+# Pre-populating with a sample message to show UI functionality
+messages_store = [
+    {
+        'id': 'init_msg_1',
+        'platform': 'whatsapp',
+        'sender': 'New Patient (Sample)',
+        'from': '+15550009999',
+        'text': 'Hello! Is this the NovaSync Dental line? (Test Message sent to 555-147-9581)',
+        'time': datetime.now().strftime("%I:%M %p"),
+        'avatar': '',
+        'unread': True
+    },
+    {
+        'id': 'init_msg_ig_1',
+        'platform': 'instagram',
+        'sender': 'instagram_user_123',
+        'from': 'ig_123456789',
+        'text': 'Hi, saw your ad on Instagram! DMing you here.',
+        'time': datetime.now().strftime("%I:%M %p"),
+        'avatar': '',
+        'unread': True
+    }
+]
+
+@app.route('/api/whatsapp/webhook', methods=['GET'])
+def verify_whatsapp_webhook():
+    """Verify webhook for Meta."""
+    mode = request.args.get('hub.mode')
+    token = request.args.get('hub.verify_token')
+    challenge = request.args.get('hub.challenge')
+    
+    verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'my_secure_token')
+    
+    if mode and token:
+        if mode == 'subscribe' and token == verify_token:
+            print("✅ WhatsApp Webhook Verified!")
+            return challenge, 200
+        else:
+            return 'Forbidden', 403
+    return 'Bad Request', 400
+
+
+@app.route('/api/whatsapp/send', methods=['POST'])
+def send_whatsapp_message():
+    """Send a WhatsApp message via Meta API and log it."""
+    try:
+        data = request.json
+        to_number = data.get('to')
+        message_text = data.get('text')
+        
+        if not to_number or not message_text:
+            return jsonify({'error': 'Missing to or text'}), 400
+
+        # Send to Meta
+        token = os.getenv('WHATSAPP_ACCESS_TOKEN')
+        phone_id = os.getenv('WHATSAPP_PHONE_ID')
+        
+        if not token or not phone_id:
+             # Fallback for demo if env vars missing
+             print("⚠️ Missing Meta credentials, simulating send.")
+        else:
+            url = f"https://graph.facebook.com/v17.0/{phone_id}/messages"
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json'
+            }
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": to_number,
+                "text": {"body": message_text}
+            }
+            resp = requests.post(url, json=payload, headers=headers)
+            print(f"Meta Send Response: {resp.status_code} - {resp.text}")
+
+        # Store in history
+        new_msg = {
+            'id': f"sent_{int(datetime.now().timestamp())}",
+            'platform': 'whatsapp',
+            'sender': 'me', # Sent by us
+            'to': to_number, # Important for grouping
+            'text': message_text,
+            'time': 'Just now', 
+            'avatar': '',
+            'unread': False
+        }
+        messages_store.insert(0, new_msg)
+        
+        return jsonify(new_msg), 200
+
+    except Exception as e:
+        print(f"❌ Send Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/whatsapp/webhook', methods=['POST'])
+def whatsapp_webhook():
+    """Receive incoming WhatsApp messages."""
+    try:
+        data = request.json
+        print(f"📩 WhatsApp Webhook: {data}")
+        
+        # Check if it's a message
+        if 'entry' in data:
+            for entry in data['entry']:
+                for change in entry.get('changes', []):
+                    value = change.get('value', {})
+                    if 'messages' in value:
+                        for msg in value['messages']:
+                            # Extract useful info
+                            from_number = msg.get('from')
+                            msg_body = msg.get('text', {}).get('body', '')
+                            timestamp = msg.get('timestamp')
+                            
+                            # Create a simplified message object
+                            new_msg = {
+                                'id': msg.get('id'),
+                                'platform': 'whatsapp',
+                                'sender': value.get('contacts', [{}])[0].get('profile', {}).get('name', from_number),
+                                'from': from_number,
+                                'text': msg_body,
+                                'time': 'Just now', # You should parse timestamp
+                                'avatar': '',
+                                'unread': True
+                            }
+                            
+                            messages_store.insert(0, new_msg) # Add to start of list
+                            print(f"✅ Saved WhatsApp message: {msg_body}")
+
+        return 'EVENT_RECEIVED', 200
+    except Exception as e:
+        print(f"❌ WhatsApp Webhook Error: {e}")
+        return 'Internal Server Error', 500
+
+
+@app.route('/api/instagram/webhook', methods=['GET'])
+def verify_instagram_webhook():
+    """Verify webhook for Instagram (Meta)."""
+    mode = request.args.get('hub.mode')
+    token = request.args.get('hub.verify_token')
+    challenge = request.args.get('hub.challenge')
+    
+    # Can reuse the same verify token or distinct one
+    verify_token = os.getenv('INSTAGRAM_VERIFY_TOKEN', os.getenv('WHATSAPP_VERIFY_TOKEN', 'nova_sync_secret'))
+    
+    if mode and token:
+        if mode == 'subscribe' and token == verify_token:
+            print("✅ Instagram Webhook Verified!")
+            return challenge, 200
+        else:
+            return 'Forbidden', 403
+    return 'Bad Request', 400
+
+@app.route('/api/instagram/webhook', methods=['POST'])
+def instagram_webhook():
+    """Receive incoming Instagram messages."""
+    try:
+        data = request.json
+        print(f"📸 Instagram Webhook: {data}")
+        
+        if 'entry' in data:
+            for entry in data['entry']:
+                # Instagram structure is slightly different often, or uses 'messaging'
+                if 'messaging' in entry:
+                    for msg in entry['messaging']:
+                         process_instagram_event(msg)
+                elif 'changes' in entry:
+                     # Some IG events come as changes
+                     for change in entry['changes']:
+                         val = change.get('value', {})
+                         if 'messages' in val:
+                             for m in val['messages']:
+                                 process_instagram_message_value(m)
+                                 
+        return 'EVENT_RECEIVED', 200
+    except Exception as e:
+        print(f"❌ Instagram Webhook Error: {e}")
+        return 'Internal Server Error', 500
+
+def process_instagram_event(msg):
+    """Refined processor for standard IG messaging events"""
+    sender_id = msg.get('sender', {}).get('id')
+    recipient_id = msg.get('recipient', {}).get('id')
+    
+    if 'message' in msg:
+        message_obj = msg['message']
+        text = message_obj.get('text', '')
+        mid = message_obj.get('mid')
+        
+        if not text:
+             return # Skip non-text for now
+
+        new_msg = {
+            'id': mid,
+            'platform': 'instagram',
+            'sender': 'Instagram User', # Ideally fetch profile
+            'from': sender_id,
+            'text': text,
+            'time': 'Just now',
+            'avatar': '',
+            'unread': True
+        }
+        messages_store.insert(0, new_msg)
+        print(f"✅ Saved Instagram message: {text}")
+
+@app.route('/api/instagram/send', methods=['POST'])
+def send_instagram_message():
+    """Send Instagram DM via Graph API."""
+    try:
+        data = request.json
+        to_id = data.get('to')
+        message_text = data.get('text')
+        
+        if not to_id or not message_text:
+            return jsonify({'error': 'Missing to or text'}), 400
+
+        token = os.getenv('INSTAGRAM_ACCESS_TOKEN')
+        
+        if not token:
+             print("⚠️ Missing Instagram Access Token, simulating send.")
+        else:
+            # Graph API for IG Send
+            url = f"https://graph.facebook.com/v17.0/me/messages"
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json'
+            }
+            payload = {
+                "recipient": {"id": to_id},
+                "message": {"text": message_text}
+            }
+            resp = requests.post(url, json=payload, headers=headers)
+            print(f"IG Send Response: {resp.status_code} - {resp.text}")
+
+        new_msg = {
+            'id': f"sent_ig_{int(datetime.now().timestamp())}",
+            'platform': 'instagram',
+            'sender': 'me',
+            'to': to_id,
+            'text': message_text,
+            'time': 'Just now',
+            'avatar': '',
+            'unread': False
+        }
+        messages_store.insert(0, new_msg)
+        
+        return jsonify(new_msg), 200
+
+    except Exception as e:
+        print(f"❌ IG Send Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/messages', methods=['GET'])
+def get_messages():
+    """Fetch all stored messages."""
+    return jsonify(messages_store)
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint."""
@@ -283,5 +548,5 @@ def health():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3002))
     print(f"\n✅ Starting API server on http://localhost:{port}")
-    print("📊 Ready to serve Google Sheets & Calendar data\n")
+    print("📊 Ready to serve Google Sheets, Calendar & WhatsApp data\n")
     app.run(host='0.0.0.0', port=port, debug=False)
