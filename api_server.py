@@ -316,7 +316,7 @@ def verify_whatsapp_webhook():
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
     
-    verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'my_secure_token')
+    verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'nova_sync_secret')
     
     if mode and token:
         if mode == 'subscribe' and token == verify_token:
