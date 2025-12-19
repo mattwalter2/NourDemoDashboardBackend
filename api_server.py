@@ -345,8 +345,8 @@ def send_whatsapp_message():
         to_number = data.get('to')
         message_text = data.get('text')
         
-        if not to_number or not message_text:
-            return jsonify({'error': 'Missing to or text'}), 400
+        if not to_number:
+            return jsonify({'error': 'Missing to number'}), 400
 
         # Send to Meta
         token = os.getenv('VITE_WHATSAPP_ACCESS_TOKEN')
@@ -361,13 +361,45 @@ def send_whatsapp_message():
                 'Authorization': f'Bearer {token}',
                 'Content-Type': 'application/json'
             }
-            payload = {
-                "messaging_product": "whatsapp",
-                "to": to_number,
-                "text": {"body": message_text}
-            }
+            
+            # Decide: Text vs Template
+            template_name = data.get('template') or data.get('templateName')
+
+            if template_name:
+                # 1. Template Message (e.g. "hello_world")
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": to_number,
+                    "type": "template",
+                    "template": {
+                        "name": template_name,
+                        "language": {
+                            "code": data.get('language', 'en_US')
+                        }
+                    }
+                }
+                # Log usage
+                stored_text = f"[Template: {template_name}]"
+                print(f"outbound template: {payload}")
+
+            else:
+                # 2. Freeform Text Message
+                if not message_text:
+                    return jsonify({'error': 'Missing text or template'}), 400
+                    
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": to_number,
+                    "text": {"body": message_text}
+                }
+                stored_text = message_text
+
             resp = requests.post(url, json=payload, headers=headers)
             print(f"Meta Send Response: {resp.status_code} - {resp.text}")
+            
+            # If we sent a template, capture that for the UI
+            if template_name:
+                message_text = stored_text
 
         # Store in history
         new_msg = {
