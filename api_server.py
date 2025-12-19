@@ -27,7 +27,7 @@ def initiate_call():
         data = request.json
         phone_number = data.get('phoneNumber')
         name = data.get('name', 'Test User')
-        
+
         variables = data.get('variables', {})
 
         if not phone_number:
@@ -49,10 +49,13 @@ def initiate_call():
         payload = {
             'assistantId': assistant_id,
             'phoneNumberId': phone_number_id,
-            'customer': {
-                'number': phone_number,
-                'name': name
+            "assistantOverrides": {
+            "variableValues": {
+            "name": name,
+            'number': phone_number,
+            'procedure_interest': procedure_interest
             }
+            },
         }
 
         # Inject context variables if present
@@ -319,7 +322,7 @@ def verify_whatsapp_webhook():
     token = request.args.get('hub.verify_token')
     challenge = request.args.get('hub.challenge')
     
-    verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'nova_sync_secret')
+    verify_token = os.getenv('VITEWHATSAPP_VERIFY_TOKEN', 'nova_sync_secret')
     
     if mode and token:
         if mode == 'subscribe' and token == verify_token:
