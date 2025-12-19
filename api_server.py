@@ -51,7 +51,7 @@ def initiate_call():
             'assistantId': assistant_id,
             'phoneNumberId': phone_number_id,
               "customer": {
-    "number": "+1{{ $json.Phone }}"
+    "number": phone_number
   },
             "assistantOverrides": {
                 "variableValues": {
