@@ -319,24 +319,6 @@ messages_store = [
     }
 ]
 
-@app.route('/api/whatsapp/webhook', methods=['GET'])
-def verify_whatsapp_webhook():
-    """Verify webhook for Meta."""
-    mode = request.args.get('hub.mode')
-    token = request.args.get('hub.verify_token')
-    challenge = request.args.get('hub.challenge')
-    
-    verify_token = os.getenv('VITEWHATSAPP_VERIFY_TOKEN', 'nova_sync_secret')
-    
-    if mode and token:
-        if mode == 'subscribe' and token == verify_token:
-            print("✅ WhatsApp Webhook Verified!")
-            return challenge, 200
-        else:
-            return 'Forbidden', 403
-    return 'Bad Request', 400
-
-
 @app.route('/api/whatsapp/send', methods=['POST'])
 def send_whatsapp_message():
     """Send a WhatsApp message via Meta API and log it."""
@@ -420,10 +402,51 @@ def send_whatsapp_message():
         print(f"❌ Send Error: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/whatsapp/webhook', methods=['POST'])
+import hmac
+import hashlib
+
+@app.route('/api/whatsapp/webhook', methods=['GET', 'POST'])
 def whatsapp_webhook():
-    """Receive incoming WhatsApp messages."""
+    """Receive incoming WhatsApp messages (POST) or Verify Webhook (GET)."""
+    if request.method == 'GET':
+        # Verify Token Logic
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        
+        # Make sure this matches your dashboard!
+        verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'nova_sync_secret')
+        
+        if mode and token:
+            if mode == 'subscribe' and token == verify_token:
+                print("✅ WhatsApp Webhook Verified!")
+                return challenge, 200
+            else:
+                return 'Forbidden', 403
+        return 'Bad Request', 400
+
+    # POST Logic (Existing)
     try:
+        # 1. Validate Signature (Security)
+        signature = request.headers.get('X-Hub-Signature-256')
+        app_secret = os.getenv('META_APP_SECRET')
+        
+        if app_secret:
+            if not signature:
+                print("⚠️  Webhook missing signature")
+                return 'Signature Missing', 403
+            
+            # Calculate expected signature
+            expected_hash = 'sha256=' + hmac.new(
+                key=app_secret.encode('utf-8'), 
+                msg=request.get_data(), 
+                digestmod=hashlib.sha256
+            ).hexdigest()
+            
+            if not hmac.compare_digest(signature, expected_hash):
+                print("❌ Webhook Signature Mismatch!")
+                return 'Forbidden', 403
+        
         data = request.json
         print(f"📩 WhatsApp Webhook: {data}")
         
