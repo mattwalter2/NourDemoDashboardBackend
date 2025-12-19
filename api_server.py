@@ -415,7 +415,7 @@ def whatsapp_webhook():
         challenge = request.args.get('hub.challenge')
         
         # Make sure this matches your dashboard!
-        verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'nova_sync_secret')
+        verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'novasync_secret')
         
         if mode and token:
             if mode == 'subscribe' and token == verify_token:
