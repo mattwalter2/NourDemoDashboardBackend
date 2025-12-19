@@ -27,6 +27,7 @@ def initiate_call():
         data = request.json
         phone_number = data.get('phoneNumber')
         name = data.get('name', 'Test User')
+        procedure_interest = data.get('procedure_interest', 'General')
 
         variables = data.get('variables', {})
 
@@ -50,11 +51,11 @@ def initiate_call():
             'assistantId': assistant_id,
             'phoneNumberId': phone_number_id,
             "assistantOverrides": {
-            "variableValues": {
-            "name": name,
-            'number': phone_number,
-            'procedure_interest': procedure_interest
-            }
+                "variableValues": {
+                    "name": name,
+                    'number': phone_number,
+                    'procedure_interest': procedure_interest
+                }
             },
         }
 
