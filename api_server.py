@@ -167,6 +167,45 @@ def get_leads():
         print(f"❌ Error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/followups', methods=['GET'])
+def get_followups():
+    """Fetch follow-up data from Google Sheets."""
+    try:
+        print("📥 Fetching follow-ups from Google Sheet...")
+        SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+        service = get_google_service('sheets', 'v4', SCOPES)
+        
+        # Fetch data from the sheet (Same source as leads for now)
+        range_name = 'Form Responses 1!A:J' 
+        result = service.spreadsheets().values().get(
+            spreadsheetId=SHEET_ID,
+            range=range_name
+        ).execute()
+        
+        rows = result.get('values', [])
+        
+        if not rows:
+            print("⚠️  No follow-up data found")
+            return jsonify([])
+        
+        # Format data
+        headers = rows[0]
+        followups = []
+        
+        for i, row in enumerate(rows[1:], 1):
+            item = {'id': i}
+            for j, header in enumerate(headers):
+                item[header] = row[j] if j < len(row) else ''
+            # Filtering logic could go here in the future
+            followups.append(item)
+        
+        print(f"✅ Returning {len(followups)} follow-up records")
+        return jsonify(followups)
+        
+    except Exception as e:
+        print(f"❌ Error fetching follow-ups: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/appointments', methods=['GET'])
 def get_appointments():
     """Fetch appointments from Google Calendar."""
