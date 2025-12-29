@@ -110,7 +110,8 @@ def get_vapi_calls():
         return jsonify({'error': str(e)}), 500
 
 # Configuration
-SHEET_ID = '1l_PBoX6lET_E8Pfm5wwBkAmaFObDJmpVmDlsereA_2k'
+SHEET_ID = os.getenv('VITE_FOLLOWUP_SHEET_ID')
+AD_SHEET_ID = os.getenv('VITE_GOOGLE_SHEET_ID') # Ad Creatives Sheet
 CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
 CREDENTIALS_FILE = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
