@@ -129,6 +129,48 @@ def get_google_service(service_name, version, scopes):
         CREDENTIALS_FILE, scopes=scopes)
     return build(service_name, version, credentials=creds)
 
+
+def format_lead_data(row, headers, index):
+    """Format raw sheet row into a structured dictionary."""
+    data = {}
+    for j, header in enumerate(headers):
+        data[header] = row[j] if j < len(row) else ''
+    
+    # Extract common fields with fallbacks
+    # Keys match what was in googleSheetsService.js
+    timestamp = data.get('Timestamp', data.get('timestamp', datetime.utcnow().isoformat()))
+    name = data.get('Name', data.get('Full Name', data.get('name', 'Unknown')))
+    email = data.get('Email', data.get('Email Address', data.get('email', 'N/A')))
+    phone = data.get('Phone', data.get('Phone Number', data.get('phone', 'N/A')))
+    treatment = data.get('Treatment', data.get('Service Interested', data.get('treatment', 'General')))
+    budget = data.get('Budget', data.get('Budget Range', data.get('budget', 'Not specified')))
+    notes = data.get('Notes', data.get('Additional Information', data.get('notes', '')))
+    
+    # Format Date/Time
+    try:
+        # Attempt to parse Google Sheet timestamp (often M/D/YYYY H:MM:SS)
+        # If it's already ISO, this might fail or need adjustment. 
+        # For simplicity, if it's not a standard format, we might keep it as string or current time.
+        # Assuming string for now, but in Python we can try to be smarter.
+        pass
+    except:
+        pass
+
+    return {
+        'id': index,
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'treatment': treatment,
+        'budget': budget,
+        'notes': notes,
+        'date': timestamp.split(' ')[0] if ' ' in timestamp else timestamp, # Simple split
+        'time': timestamp.split(' ')[1] if ' ' in timestamp else '',
+        'status': data.get('status', 'new'),
+        'source': 'Google Form',
+        'rawData': data
+    }
+
 @app.route('/api/leads', methods=['GET'])
 def get_leads():
     """Fetch leads from Google Sheets."""
@@ -138,7 +180,7 @@ def get_leads():
         service = get_google_service('sheets', 'v4', SCOPES)
         
         # Fetch data from the sheet
-        range_name = 'Form Responses 1!A:J'  # Adjust as needed
+        range_name = 'Sheet1!A:J'  # Updated to correct sheet name
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
             range=range_name
@@ -155,12 +197,9 @@ def get_leads():
         leads = []
         
         for i, row in enumerate(rows[1:], 1):
-            lead = {'id': i}
-            for j, header in enumerate(headers):
-                lead[header] = row[j] if j < len(row) else ''
-            leads.append(lead)
+            leads.append(format_lead_data(row, headers, i))
         
-        print(f"✅ Returning {len(leads)} leads")
+        print(f"✅ Returning {len(leads)} formatted leads")
         return jsonify(leads)
         
     except Exception as e:
@@ -176,7 +215,7 @@ def get_followups():
         service = get_google_service('sheets', 'v4', SCOPES)
         
         # Fetch data from the sheet (Same source as leads for now)
-        range_name = 'Form Responses 1!A:J' 
+        range_name = 'Sheet1!A:J' 
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
             range=range_name
@@ -193,13 +232,9 @@ def get_followups():
         followups = []
         
         for i, row in enumerate(rows[1:], 1):
-            item = {'id': i}
-            for j, header in enumerate(headers):
-                item[header] = row[j] if j < len(row) else ''
-            # Filtering logic could go here in the future
-            followups.append(item)
+             followups.append(format_lead_data(row, headers, i))
         
-        print(f"✅ Returning {len(followups)} follow-up records")
+        print(f"✅ Returning {len(followups)} formatted follow-ups")
         return jsonify(followups)
         
     except Exception as e:
