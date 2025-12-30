@@ -138,20 +138,44 @@ def format_lead_data(row, headers, index):
     
     # Extract common fields with fallbacks
     # Keys match what was in googleSheetsService.js
-    timestamp = data.get('Timestamp', data.get('timestamp', datetime.utcnow().isoformat()))
-    name = data.get('Name', data.get('Full Name', data.get('name', 'Unknown')))
-    email = data.get('Email', data.get('Email Address', data.get('email', 'N/A')))
-    phone = data.get('Phone', data.get('Phone Number', data.get('phone', 'N/A')))
-    treatment = data.get('Treatment', data.get('Service Interested', data.get('treatment', 'General')))
-    budget = data.get('Budget', data.get('Budget Range', data.get('budget', 'Not specified')))
+    # Extract fields based on provided column names
+    # patient_firstname, patient_lastname, patient_phone, appointment_type, patient_email, 
+    # appointment_datetime, confirm_status, appointment_location, appointment_time, 
+    # last_followup_sent, next_followup_at, reminder_stage
+
+    first_name = data.get('patient_firstname', '')
+    last_name = data.get('patient_lastname', '')
+    full_name = f"{first_name} {last_name}".strip()
+    
+    # Fallbacks to existing logic if new columns are missing
+    name = full_name if full_name else data.get('Name', data.get('Full Name', data.get('name', 'Unknown')))
+    
+    email = data.get('patient_email', data.get('Email', data.get('Email Address', data.get('email', 'N/A'))))
+    phone = data.get('patient_phone', data.get('Phone', data.get('Phone Number', data.get('phone', 'N/A'))))
+    treatment = data.get('appointment_type', data.get('Treatment', data.get('Service Interested', data.get('treatment', 'General'))))
+    
+    # Budget might not exist in new schema, allow fallback or drop
+    budget = data.get('Budget', data.get('Budget Range', data.get('budget', ''))) 
+    
     notes = data.get('Notes', data.get('Additional Information', data.get('notes', '')))
     
+    reminder_stage = data.get('reminder_stage', data.get('Reminder Stage', '0'))
+    confirm_status = data.get('confirm_status', 'new')
+    
+    # Appointment specific
+    appt_date = data.get('appointment_datetime', '')
+    appt_time = data.get('appointment_time', '')
+    
+    # Other metadata
+    last_followup = data.get('last_followup_sent', '')
+    next_followup = data.get('next_followup_at', '')
+    location = data.get('appointment_location', '')
+
+    timestamp = data.get('Timestamp', data.get('timestamp', datetime.utcnow().isoformat()))
+
     # Format Date/Time
     try:
         # Attempt to parse Google Sheet timestamp (often M/D/YYYY H:MM:SS)
-        # If it's already ISO, this might fail or need adjustment. 
-        # For simplicity, if it's not a standard format, we might keep it as string or current time.
-        # Assuming string for now, but in Python we can try to be smarter.
         pass
     except:
         pass
@@ -164,9 +188,14 @@ def format_lead_data(row, headers, index):
         'treatment': treatment,
         'budget': budget,
         'notes': notes,
-        'date': timestamp.split(' ')[0] if ' ' in timestamp else timestamp, # Simple split
-        'time': timestamp.split(' ')[1] if ' ' in timestamp else '',
-        'status': data.get('status', 'new'),
+        'reminder_stage': str(reminder_stage).strip(), 
+        # Prioritize appointment specific date/time columns
+        'date': appt_date if appt_date else (timestamp.split(' ')[0] if ' ' in timestamp else timestamp),
+        'time': appt_time if appt_time else (timestamp.split(' ')[1] if ' ' in timestamp else ''),
+        'status': confirm_status if confirm_status and confirm_status != 'new' else data.get('status', 'new'),
+        'location': location,
+        'lastContact': last_followup,
+        'nextFollowup': next_followup,
         'source': 'Google Form',
         'rawData': data
     }
