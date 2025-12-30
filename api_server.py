@@ -394,7 +394,8 @@ def vapi_webhook():
                                     "timestamp": datetime.utcnow().isoformat()
                                 }
                                 print(f"🚀 Triggering n8n webhook: {webhook_payload}")
-                                requests.post(n8n_webhook_url, json=webhook_payload, timeout=5)
+                                response = requests.post(n8n_webhook_url, json=webhook_payload, timeout=5)
+                                print(f"📬 n8n Response: {response.status_code} - {response.text}")
                             except Exception as hook_err:
                                 print(f"⚠️ Failed to trigger n8n webhook: {hook_err}")
                             # -----------------------------------------
