@@ -376,6 +376,28 @@ def vapi_webhook():
                             created_event = service.events().insert(calendarId=CALENDAR_ID, body=event).execute()
                             result_content = f"Success! Appointment booked for {day} at {time_iso}. Event ID: {created_event.get('id')}"
                             print(f"✅ Event created: {created_event.get('htmlLink')}")
+
+                            # --- Trigger n8n Webhook for Follow-up ---
+                            try:
+                                n8n_webhook_url = "https://mattwalter2.app.n8n.cloud/webhook/663ccdf8-2dc0-4dd2-be3a-058216228b28"
+                                # Extract phone from Vapi call object if available
+                                call_data = data.get('call', {})
+                                customer_data = call_data.get('customer', {})
+                                customer_phone = customer_data.get('number', 'Unknown')
+                                
+                                webhook_payload = {
+                                    "event": "appointment_booked",
+                                    "name": name,
+                                    "phone": customer_phone,
+                                    "appointment_date": day,
+                                    "appointment_time": time_iso,
+                                    "timestamp": datetime.utcnow().isoformat()
+                                }
+                                print(f"🚀 Triggering n8n webhook: {webhook_payload}")
+                                requests.post(n8n_webhook_url, json=webhook_payload, timeout=5)
+                            except Exception as hook_err:
+                                print(f"⚠️ Failed to trigger n8n webhook: {hook_err}")
+                            # -----------------------------------------
                             
                         except Exception as cal_err:
                             result_content = f"Failed to book calendar event: {str(cal_err)}"
