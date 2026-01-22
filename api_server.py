@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 
 # Load environment variables from parent directory
-# Load environment variables from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 # Also load from current directory (overrides parent if present)
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -20,6 +19,33 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for React app
 
 CLINIC_TZ = "America/New_York"
+
+# Configuration
+# SHEET_ID = os.getenv('VITE_FOLLOWUP_SHEET_ID')
+# AD_SHEET_ID = os.getenv('VITE_GOOGLE_SHEET_ID') # Ad Creatives Sheet
+
+# --- UNCOMMENTED AS REQUIRED FOR APPOINTMENTS ---
+CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
+CREDENTIALS_FILE = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+
+if not CREDENTIALS_FILE:
+    print("❌ ERROR: GOOGLE_APPLICATION_CREDENTIALS not found in .env")
+    # sys.exit(1) # Commented out exit to prevent crashing if user hasn't set it yet, but it will error on usage.
+
+print(f"🔑 Using credentials: {CREDENTIALS_FILE}")
+# print(f"📊 Sheet ID: {SHEET_ID}")
+print(f"📅 Calendar ID: {CALENDAR_ID}")
+
+def get_google_service(service_name, version, scopes):
+    """Initialize Google API service."""
+    try:
+        creds = service_account.Credentials.from_service_account_file(
+            CREDENTIALS_FILE, scopes=scopes)
+        return build(service_name, version, credentials=creds)
+    except Exception as e:
+        print(f"Failed to load credentials: {e}")
+        raise e
+# -----------------------------------------------
 
 @app.route('/api/vapi/initiate-call', methods=['POST'])
 def initiate_call():
@@ -86,6 +112,8 @@ def initiate_call():
 def get_vapi_calls():
     try:
         limit = request.args.get('limit', 50)
+        assistant_id = request.args.get('assistantId') 
+
         api_key = os.getenv('VAPI_API_KEY')
         
         if not api_key:
@@ -96,8 +124,12 @@ def get_vapi_calls():
             'Content-Type': 'application/json'
         }
         
-        print(f"Fetching calls from Vapi (limit={limit})...")
-        response = requests.get(f'https://api.vapi.ai/call?limit={limit}', headers=headers)
+        url = f'https://api.vapi.ai/call?limit={limit}'
+        if assistant_id:
+            url += f'&assistantId={assistant_id}'
+
+        print(f"Fetching calls from Vapi (limit={limit}, assistantId={assistant_id})...")
+        response = requests.get(url, headers=headers)
         
         if response.status_code == 200:
              return jsonify(response.json()), 200
@@ -109,96 +141,76 @@ def get_vapi_calls():
         print(f"Error in get_vapi_calls: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Configuration
-# SHEET_ID = os.getenv('VITE_FOLLOWUP_SHEET_ID')
-# AD_SHEET_ID = os.getenv('VITE_GOOGLE_SHEET_ID') # Ad Creatives Sheet
-# CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
-# CREDENTIALS_FILE = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
-if not CREDENTIALS_FILE:
-    print("❌ ERROR: GOOGLE_APPLICATION_CREDENTIALS not found in .env")
-    sys.exit(1)
-
-print(f"🔑 Using credentials: {CREDENTIALS_FILE}")
-print(f"📊 Sheet ID: {SHEET_ID}")
-print(f"📅 Calendar ID: {CALENDAR_ID}")
-
-def get_google_service(service_name, version, scopes):
-    """Initialize Google API service."""
-    creds = service_account.Credentials.from_service_account_file(
-        CREDENTIALS_FILE, scopes=scopes)
-    return build(service_name, version, credentials=creds)
-
-
-def format_lead_data(row, headers, index):
-    """Format raw sheet row into a structured dictionary."""
-    data = {}
-    for j, header in enumerate(headers):
-        data[header] = row[j] if j < len(row) else ''
-    
-    # Extract common fields with fallbacks
-    # Keys match what was in googleSheetsService.js
-    # Extract fields based on provided column names
-    # patient_firstname, patient_lastname, patient_phone, appointment_type, patient_email, 
-    # appointment_datetime, confirm_status, appointment_location, appointment_time, 
-    # last_followup_sent, next_followup_at, reminder_stage
-
-    first_name = data.get('patient_firstname', '')
-    last_name = data.get('patient_lastname', '')
-    full_name = f"{first_name} {last_name}".strip()
-    
-    # Fallbacks to existing logic if new columns are missing
-    name = full_name if full_name else data.get('Name', data.get('Full Name', data.get('name', 'Unknown')))
-    
-    email = data.get('patient_email', data.get('Email', data.get('Email Address', data.get('email', 'N/A'))))
-    phone = data.get('patient_phone', data.get('Phone', data.get('Phone Number', data.get('phone', 'N/A'))))
-    treatment = data.get('appointment_type', data.get('Treatment', data.get('Service Interested', data.get('treatment', 'General'))))
-    
-    # Budget might not exist in new schema, allow fallback or drop
-    budget = data.get('Budget', data.get('Budget Range', data.get('budget', ''))) 
-    
-    notes = data.get('Notes', data.get('Additional Information', data.get('notes', '')))
-    
-    reminder_stage = data.get('reminder_stage', data.get('Reminder Stage', '0'))
-    confirm_status = data.get('confirm_status', 'new')
-    
-    # Appointment specific
-    appt_date = data.get('appointment_datetime', '')
-    appt_time = data.get('appointment_time', '')
-    
-    # Other metadata
-    last_followup = data.get('last_followup_sent', '')
-    next_followup = data.get('next_followup_at', '')
-    location = data.get('appointment_location', '')
-
-    timestamp = data.get('Timestamp', data.get('timestamp', datetime.utcnow().isoformat()))
-
-    # Format Date/Time
-    try:
-        # Attempt to parse Google Sheet timestamp (often M/D/YYYY H:MM:SS)
-        pass
-    except:
-        pass
-
-    return {
-        'id': index,
-        'name': name,
-        'email': email,
-        'phone': phone,
-        'treatment': treatment,
-        'budget': budget,
-        'notes': notes,
-        'reminder_stage': str(reminder_stage).strip(), 
-        # Prioritize appointment specific date/time columns
-        'date': appt_date if appt_date else (timestamp.split(' ')[0] if ' ' in timestamp else timestamp),
-        'time': appt_time if appt_time else (timestamp.split(' ')[1] if ' ' in timestamp else ''),
-        'status': confirm_status if confirm_status and confirm_status != 'new' else data.get('status', 'new'),
-        'location': location,
-        'lastContact': last_followup,
-        'nextFollowup': next_followup,
-        'source': 'Google Form',
-        'rawData': data
-    }
+# def format_lead_data(row, headers, index):
+#     """Format raw sheet row into a structured dictionary."""
+#     data = {}
+#     for j, header in enumerate(headers):
+#         data[header] = row[j] if j < len(row) else ''
+#     
+#     # Extract common fields with fallbacks
+#     # Keys match what was in googleSheetsService.js
+#     # Extract fields based on provided column names
+#     # patient_firstname, patient_lastname, patient_phone, appointment_type, patient_email, 
+#     # appointment_datetime, confirm_status, appointment_location, appointment_time, 
+#     # last_followup_sent, next_followup_at, reminder_stage
+# 
+#     first_name = data.get('patient_firstname', '')
+#     last_name = data.get('patient_lastname', '')
+#     full_name = f"{first_name} {last_name}".strip()
+#     
+#     # Fallbacks to existing logic if new columns are missing
+#     name = full_name if full_name else data.get('Name', data.get('Full Name', data.get('name', 'Unknown')))
+#     
+#     email = data.get('patient_email', data.get('Email', data.get('Email Address', data.get('email', 'N/A'))))
+#     phone = data.get('patient_phone', data.get('Phone', data.get('Phone Number', data.get('phone', 'N/A'))))
+#     treatment = data.get('appointment_type', data.get('Treatment', data.get('Service Interested', data.get('treatment', 'General'))))
+#     
+#     # Budget might not exist in new schema, allow fallback or drop
+#     budget = data.get('Budget', data.get('Budget Range', data.get('budget', ''))) 
+#     
+#     notes = data.get('Notes', data.get('Additional Information', data.get('notes', '')))
+#     
+#     reminder_stage = data.get('reminder_stage', data.get('Reminder Stage', '0'))
+#     confirm_status = data.get('confirm_status', 'new')
+#     
+#     # Appointment specific
+#     appt_date = data.get('appointment_datetime', '')
+#     appt_time = data.get('appointment_time', '')
+#     
+#     # Other metadata
+#     last_followup = data.get('last_followup_sent', '')
+#     next_followup = data.get('next_followup_at', '')
+#     location = data.get('appointment_location', '')
+# 
+#     timestamp = data.get('Timestamp', data.get('timestamp', datetime.utcnow().isoformat()))
+# 
+#     # Format Date/Time
+#     try:
+#         # Attempt to parse Google Sheet timestamp (often M/D/YYYY H:MM:SS)
+#         pass
+#     except:
+#         pass
+# 
+#     return {
+#         'id': index,
+#         'name': name,
+#         'email': email,
+#         'phone': phone,
+#         'treatment': treatment,
+#         'budget': budget,
+#         'notes': notes,
+#         'reminder_stage': str(reminder_stage).strip(), 
+#         # Prioritize appointment specific date/time columns
+#         'date': appt_date if appt_date else (timestamp.split(' ')[0] if ' ' in timestamp else timestamp),
+#         'time': appt_time if appt_time else (timestamp.split(' ')[1] if ' ' in timestamp else ''),
+#         'status': confirm_status if confirm_status and confirm_status != 'new' else data.get('status', 'new'),
+#         'location': location,
+#         'lastContact': last_followup,
+#         'nextFollowup': next_followup,
+#         'source': 'Google Form',
+#         'rawData': data
+#     }
 
 # @app.route('/api/leads', methods=['GET'])
 # def get_leads():
@@ -207,30 +219,30 @@ def format_lead_data(row, headers, index):
 #         print("📥 Fetching leads from Google Sheet...")
 #         SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 #         service = get_google_service('sheets', 'v4', SCOPES)
-        
+#         
 #         # Fetch data from the sheet
 #         range_name = 'Sheet1!A:J'  # Updated to correct sheet name
 #         result = service.spreadsheets().values().get(
 #             spreadsheetId=SHEET_ID,
 #             range=range_name
 #         ).execute()
-        
+#         
 #         rows = result.get('values', [])
-        
+#         
 #         if not rows:
 #             print("⚠️  No data found")
 #             return jsonify([])
-        
+#         
 #         # Format data
 #         headers = rows[0]
 #         leads = []
-        
+#         
 #         for i, row in enumerate(rows[1:], 1):
 #             leads.append(format_lead_data(row, headers, i))
-        
+#         
 #         print(f"✅ Returning {len(leads)} formatted leads")
 #         return jsonify(leads)
-        
+#         
 #     except Exception as e:
 #         print(f"❌ Error: {str(e)}")
 #         return jsonify({'error': str(e)}), 500
@@ -242,30 +254,30 @@ def format_lead_data(row, headers, index):
 #         print("📥 Fetching follow-ups from Google Sheet...")
 #         SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 #         service = get_google_service('sheets', 'v4', SCOPES)
-        
+#         
 #         # Fetch data from the sheet (Same source as leads for now)
 #         range_name = 'Sheet1!A:J' 
 #         result = service.spreadsheets().values().get(
 #             spreadsheetId=SHEET_ID,
 #             range=range_name
 #         ).execute()
-        
+#         
 #         rows = result.get('values', [])
-        
+#         
 #         if not rows:
 #             print("⚠️  No follow-up data found")
 #             return jsonify([])
-        
+#         
 #         # Format data
 #         headers = rows[0]
 #         followups = []
-        
+#         
 #         for i, row in enumerate(rows[1:], 1):
 #              followups.append(format_lead_data(row, headers, i))
-        
+#         
 #         print(f"✅ Returning {len(followups)} formatted follow-ups")
 #         return jsonify(followups)
-        
+#         
 #     except Exception as e:
 #         print(f"❌ Error fetching follow-ups: {str(e)}")
 #         return jsonify({'error': str(e)}), 500
@@ -453,14 +465,14 @@ def vapi_webhook():
 #         data = request.json
 #         to_number = data.get('to')
 #         message_text = data.get('text')
-        
+#         
 #         if not to_number:
 #             return jsonify({'error': 'Missing to number'}), 400
-
+# 
 #         # Send to Meta
 #         token = os.getenv('VITE_WHATSAPP_ACCESS_TOKEN')
 #         phone_id = os.getenv('VITE_WHATSAPP_PHONE_ID')
-        
+#         
 #         if not token or not phone_id:
 #              # Fallback for demo if env vars missing
 #              print("⚠️ Missing Meta credentials, simulating send.")
@@ -470,10 +482,10 @@ def vapi_webhook():
 #                 'Authorization': f'Bearer {token}',
 #                 'Content-Type': 'application/json'
 #             }
-            
+#             
 #             # Decide: Text vs Template
 #             template_name = data.get('template') or data.get('templateName')
-
+# 
 #             if template_name:
 #                 # 1. Template Message (e.g. "hello_world")
 #                 payload = {
@@ -490,26 +502,26 @@ def vapi_webhook():
 #                 # Log usage
 #                 stored_text = f"[Template: {template_name}]"
 #                 print(f"outbound template: {payload}")
-
+# 
 #             else:
 #                 # 2. Freeform Text Message
 #                 if not message_text:
 #                     return jsonify({'error': 'Missing text or template'}), 400
-                    
+#                     
 #                 payload = {
 #                     "messaging_product": "whatsapp",
 #                     "to": to_number,
 #                     "text": {"body": message_text}
 #                 }
 #                 stored_text = message_text
-
+# 
 #             resp = requests.post(url, json=payload, headers=headers)
 #             print(f"Meta Send Response: {resp.status_code} - {resp.text}")
-            
+#             
 #             # If we sent a template, capture that for the UI
 #             if template_name:
 #                 message_text = stored_text
-
+# 
 #         # Store in history
 #         new_msg = {
 #             'id': f"sent_{int(datetime.now().timestamp())}",
@@ -522,9 +534,9 @@ def vapi_webhook():
 #             'unread': False
 #         }
 #         messages_store.insert(0, new_msg)
-        
+#         
 #         return jsonify(new_msg), 200
-
+# 
 #     except Exception as e:
 #         print(f"❌ Send Error: {e}")
 #         return jsonify({'error': str(e)}), 500
@@ -540,10 +552,10 @@ def vapi_webhook():
 #         mode = request.args.get('hub.mode')
 #         token = request.args.get('hub.verify_token')
 #         challenge = request.args.get('hub.challenge')
-        
+#         
 #         # Make sure this matches your dashboard!
 #         verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'novasync_secret')
-        
+#         
 #         if mode and token:
 #             if mode == 'subscribe' and token == verify_token:
 #                 print("✅ WhatsApp Webhook Verified!")
@@ -551,35 +563,35 @@ def vapi_webhook():
 #             else:
 #                 return 'Forbidden', 403
 #         return 'Bad Request', 400
-
+# 
 #     # POST Logic (Existing)
 #     try:
 #         # 1. Validate Signature (Security)
 #         signature = request.headers.get('X-Hub-Signature-256')
 #         app_secret = os.getenv('META_APP_SECRET')
-        
+#         
 #         if app_secret:
 #             if not signature:
 #                 print("⚠️  Webhook missing signature")
 #                 return 'Signature Missing', 403
-            
+#             
 #             # Calculate expected signature
 #             expected_hash = 'sha256=' + hmac.new(
 #                 key=app_secret.encode('utf-8'), 
 #                 msg=request.get_data(), 
 #                 digestmod=hashlib.sha256
 #             ).hexdigest()
-            
+#             
 #             if not hmac.compare_digest(signature, expected_hash):
 #                 print("❌ Webhook Signature Mismatch!")
 #                 return 'Forbidden', 403
-        
+#         
 #         data = request.json
 #         print(f"📩 Webhook Received: {data}")
-        
+#         
 #         # 2. Check Object Type (WhatsApp vs Instagram)
 #         obj_type = data.get('object')
-        
+#         
 #         if obj_type == 'instagram':
 #              # Route to Instagram Logic
 #              if 'entry' in data:
@@ -588,7 +600,7 @@ def vapi_webhook():
 #                          for msg in entry['messaging']:
 #                              process_instagram_event(msg)
 #              return 'EVENT_RECEIVED', 200
-
+# 
 #         elif obj_type == 'whatsapp_business_account':
 #             # Route to WhatsApp Logic (Existing)
 #             if 'entry' in data:
@@ -601,7 +613,7 @@ def vapi_webhook():
 #                                 from_number = msg.get('from')
 #                                 msg_body = msg.get('text', {}).get('body', '')
 #                                 timestamp = msg.get('timestamp')
-                                
+#                                 
 #                                 # Create a simplified message object
 #                                 new_msg = {
 #                                     'id': msg.get('id'),
@@ -613,12 +625,12 @@ def vapi_webhook():
 #                                     'avatar': '',
 #                                     'unread': True
 #                                 }
-                                
+#                                 
 #                                 messages_store.insert(0, new_msg) # Add to start of list
 #                                 print(f"✅ Saved WhatsApp message: {msg_body}")
-
+# 
 #             return 'EVENT_RECEIVED', 200
-        
+#         
 #         else:
 #             # Unknown object
 #             print(f"❓ Unknown webhook object: {obj_type}")
@@ -634,10 +646,10 @@ def vapi_webhook():
 #     mode = request.args.get('hub.mode')
 #     token = request.args.get('hub.verify_token')
 #     challenge = request.args.get('hub.challenge')
-    
+#     
 #     # Can reuse the same verify token or distinct one
 #     verify_token = os.getenv('INSTAGRAM_VERIFY_TOKEN', os.getenv('WHATSAPP_VERIFY_TOKEN', 'nova_sync_secret'))
-    
+#     
 #     if mode and token:
 #         if mode == 'subscribe' and token == verify_token:
 #             print("✅ Instagram Webhook Verified!")
@@ -652,7 +664,7 @@ def vapi_webhook():
 #     try:
 #         data = request.json
 #         print(f"📸 Instagram Webhook: {data}")
-        
+#         
 #         if 'entry' in data:
 #             for entry in data['entry']:
 #                 # Instagram structure is slightly different often, or uses 'messaging'
@@ -666,9 +678,9 @@ def vapi_webhook():
 #                          if 'messages' in val:
 #                              for m in val['messages']:
 #                                  process_instagram_message_value(m)
-
-                                 
-                                 
+# 
+#                                  
+#                                  
 #         return 'EVENT_RECEIVED', 200
 #     except Exception as e:
 #         print(f"❌ Instagram Webhook Error: {e}")
@@ -678,15 +690,15 @@ def vapi_webhook():
 #     """Refined processor for standard IG messaging events"""
 #     sender_id = msg.get('sender', {}).get('id')
 #     recipient_id = msg.get('recipient', {}).get('id')
-    
+#     
 #     if 'message' in msg:
 #         message_obj = msg['message']
 #         text = message_obj.get('text', '')
 #         mid = message_obj.get('mid')
-        
+#         
 #         if not text:
 #              return # Skip non-text for now
-
+# 
 #         new_msg = {
 #             'id': mid,
 #             'platform': 'instagram',
@@ -712,15 +724,15 @@ def vapi_webhook():
 #         data = request.json
 #         to_id = data.get('to')
 #         message_text = data.get('text')
-        
+#         
 #         if not to_id or not message_text:
 #             return jsonify({'error': 'Missing to or text'}), 400
-
+# 
 #         token = os.getenv('VITE_INSTAGRAM_ACCESS_TOKEN')
 #         # We need the Instagram Business Account ID to send messages, NOT 'me'
 #         # 'me' refers to the Facebook User owning the token
 #         ig_account_id = os.getenv('VITE_INSTAGRAM_ACCOUNT_ID') 
-        
+#         
 #         if not token or not ig_account_id:
 #              print("⚠️ Missing Instagram Token or Account ID")
 #              # Return error in production, simulating success for demo if needed
@@ -740,7 +752,7 @@ def vapi_webhook():
 #             }
 #             resp = requests.post(url, json=payload, headers=headers)
 #             print(f"IG Send Response: {resp.status_code} - {resp.text}")
-
+# 
 #         new_msg = {
 #             'id': f"sent_ig_{int(datetime.now().timestamp())}",
 #             'platform': 'instagram',
@@ -752,9 +764,9 @@ def vapi_webhook():
 #             'unread': False
 #         }
 #         messages_store.insert(0, new_msg)
-        
+#         
 #         return jsonify(new_msg), 200
-
+# 
 #     except Exception as e:
 #         print(f"❌ IG Send Error: {e}")
 #         return jsonify({'error': str(e)}), 500
@@ -766,9 +778,9 @@ def vapi_webhook():
 #     try:
 #         # Check standard and VITE_ prefixed variables (in case user copied frontend env)
 #         access_token = os.getenv('VITE_META_ACCESS_TOKEN')
-        
+#         
 #         ad_account_id = os.getenv('VITE_META_AD_ACCOUNT_ID')
-
+# 
 #         if not access_token or not ad_account_id:
 #             # Fallback for demo/testing if env vars missing
 #             print("⚠️ Missing Meta Ads credentials in backend.")
@@ -776,11 +788,11 @@ def vapi_webhook():
 #                 "data": [],
 #                 "error": "Missing backend credentials"
 #             }), 200 # Return 200 to avoid frontend crash, just empty data
-
+# 
 #         # Ensure Account ID format
 #         if not ad_account_id.startswith('act_'):
 #             ad_account_id = f"act_{ad_account_id}"
-
+# 
 #         # 1. Fetch Campaigns
 #         fields = "id,name,status,effective_status,objective,spend_cap,daily_budget,lifetime_budget"
 #         url = f"https://graph.facebook.com/v18.0/{ad_account_id}/campaigns"
@@ -789,28 +801,28 @@ def vapi_webhook():
 #             'access_token': access_token,
 #             'limit': 50
 #         }
-        
+#         
 #         print(f"Fetching Meta Campaigns for {ad_account_id}...")
 #         response = requests.get(url, params=params)
-        
+#         
 #         # DEBUG LOGGING
 #         print(f"DEBUG: Meta Response Code: {response.status_code}")
 #         print(f"DEBUG: Meta Response Body: {response.text}")
-
+# 
 #         if response.status_code != 200:
 #              print(f"❌ Meta API Error: {response.text}")
 #              return jsonify({'error': 'Meta API Error', 'details': response.json()}), response.status_code
-
+# 
 #         data = response.json()
 #         campaigns = data.get('data', [])
 #         print(f"DEBUG: Found {len(campaigns)} campaigns")
-
+# 
 #         # 2. Fetch Insights for each campaign (simplified basic implementation)
 #         # For production, you'd want to use a batch request or 'insights' edge on the account level
 #         campaigns_with_insights = []
-        
+#         
 #         insight_fields = "impressions,clicks,spend,ctr,cpc,cpp,cpm,reach,frequency,actions,cost_per_action_type"
-        
+#         
 #         for camp in campaigns:
 #             camp_id = camp.get('id')
 #             ins_url = f"https://graph.facebook.com/v18.0/{camp_id}/insights"
@@ -821,21 +833,21 @@ def vapi_webhook():
 #             }
 #             ins_res = requests.get(ins_url, params=ins_params)
 #             insights_data = ins_res.json().get('data', [])
-            
+#             
 #             # Attach insights directly to campaign object
 #             camp['insights'] = insights_data[0] if insights_data else {}
 #             campaigns_with_insights.append(camp)
-
+# 
 #         return jsonify({'data': campaigns_with_insights}), 200
-
+# 
 #     except Exception as e:
 #         print(f"❌ Meta Proxy Error: {e}")
 #         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/messages', methods=['GET'])
-def get_messages():
-    """Fetch all stored messages."""
-    return jsonify(messages_store)
+# @app.route('/api/messages', methods=['GET'])
+# def get_messages():
+#     """Fetch all stored messages."""
+#     return jsonify(messages_store)
 
 @app.route('/health', methods=['GET'])
 def health():
