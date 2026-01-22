@@ -110,10 +110,10 @@ def get_vapi_calls():
         return jsonify({'error': str(e)}), 500
 
 # Configuration
-SHEET_ID = os.getenv('VITE_FOLLOWUP_SHEET_ID')
-AD_SHEET_ID = os.getenv('VITE_GOOGLE_SHEET_ID') # Ad Creatives Sheet
-CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
-CREDENTIALS_FILE = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+# SHEET_ID = os.getenv('VITE_FOLLOWUP_SHEET_ID')
+# AD_SHEET_ID = os.getenv('VITE_GOOGLE_SHEET_ID') # Ad Creatives Sheet
+# CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
+# CREDENTIALS_FILE = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 
 if not CREDENTIALS_FILE:
     print("❌ ERROR: GOOGLE_APPLICATION_CREDENTIALS not found in .env")
@@ -200,75 +200,75 @@ def format_lead_data(row, headers, index):
         'rawData': data
     }
 
-@app.route('/api/leads', methods=['GET'])
-def get_leads():
-    """Fetch leads from Google Sheets."""
-    try:
-        print("📥 Fetching leads from Google Sheet...")
-        SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-        service = get_google_service('sheets', 'v4', SCOPES)
+# @app.route('/api/leads', methods=['GET'])
+# def get_leads():
+#     """Fetch leads from Google Sheets."""
+#     try:
+#         print("📥 Fetching leads from Google Sheet...")
+#         SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+#         service = get_google_service('sheets', 'v4', SCOPES)
         
-        # Fetch data from the sheet
-        range_name = 'Sheet1!A:J'  # Updated to correct sheet name
-        result = service.spreadsheets().values().get(
-            spreadsheetId=SHEET_ID,
-            range=range_name
-        ).execute()
+#         # Fetch data from the sheet
+#         range_name = 'Sheet1!A:J'  # Updated to correct sheet name
+#         result = service.spreadsheets().values().get(
+#             spreadsheetId=SHEET_ID,
+#             range=range_name
+#         ).execute()
         
-        rows = result.get('values', [])
+#         rows = result.get('values', [])
         
-        if not rows:
-            print("⚠️  No data found")
-            return jsonify([])
+#         if not rows:
+#             print("⚠️  No data found")
+#             return jsonify([])
         
-        # Format data
-        headers = rows[0]
-        leads = []
+#         # Format data
+#         headers = rows[0]
+#         leads = []
         
-        for i, row in enumerate(rows[1:], 1):
-            leads.append(format_lead_data(row, headers, i))
+#         for i, row in enumerate(rows[1:], 1):
+#             leads.append(format_lead_data(row, headers, i))
         
-        print(f"✅ Returning {len(leads)} formatted leads")
-        return jsonify(leads)
+#         print(f"✅ Returning {len(leads)} formatted leads")
+#         return jsonify(leads)
         
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+#     except Exception as e:
+#         print(f"❌ Error: {str(e)}")
+#         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/followups', methods=['GET'])
-def get_followups():
-    """Fetch follow-up data from Google Sheets."""
-    try:
-        print("📥 Fetching follow-ups from Google Sheet...")
-        SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-        service = get_google_service('sheets', 'v4', SCOPES)
+# @app.route('/api/followups', methods=['GET'])
+# def get_followups():
+#     """Fetch follow-up data from Google Sheets."""
+#     try:
+#         print("📥 Fetching follow-ups from Google Sheet...")
+#         SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+#         service = get_google_service('sheets', 'v4', SCOPES)
         
-        # Fetch data from the sheet (Same source as leads for now)
-        range_name = 'Sheet1!A:J' 
-        result = service.spreadsheets().values().get(
-            spreadsheetId=SHEET_ID,
-            range=range_name
-        ).execute()
+#         # Fetch data from the sheet (Same source as leads for now)
+#         range_name = 'Sheet1!A:J' 
+#         result = service.spreadsheets().values().get(
+#             spreadsheetId=SHEET_ID,
+#             range=range_name
+#         ).execute()
         
-        rows = result.get('values', [])
+#         rows = result.get('values', [])
         
-        if not rows:
-            print("⚠️  No follow-up data found")
-            return jsonify([])
+#         if not rows:
+#             print("⚠️  No follow-up data found")
+#             return jsonify([])
         
-        # Format data
-        headers = rows[0]
-        followups = []
+#         # Format data
+#         headers = rows[0]
+#         followups = []
         
-        for i, row in enumerate(rows[1:], 1):
-             followups.append(format_lead_data(row, headers, i))
+#         for i, row in enumerate(rows[1:], 1):
+#              followups.append(format_lead_data(row, headers, i))
         
-        print(f"✅ Returning {len(followups)} formatted follow-ups")
-        return jsonify(followups)
+#         print(f"✅ Returning {len(followups)} formatted follow-ups")
+#         return jsonify(followups)
         
-    except Exception as e:
-        print(f"❌ Error fetching follow-ups: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+#     except Exception as e:
+#         print(f"❌ Error fetching follow-ups: {str(e)}")
+#         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/appointments', methods=['GET'])
 def get_appointments():
@@ -423,414 +423,414 @@ def vapi_webhook():
 
 # In-memory message store (for demo purposes)
 # Pre-populating with a sample message to show UI functionality
-messages_store = [
-    {
-        'id': 'init_msg_1',
-        'platform': 'whatsapp',
-        'sender': 'New Patient (Sample)',
-        'from': '+15550009999',
-        'text': 'Hello! Is this the NovaSync Dental line? (Test Message sent to 555-147-9581)',
-        'time': datetime.now().strftime("%I:%M %p"),
-        'avatar': '',
-        'unread': True
-    },
-    {
-        'id': 'init_msg_ig_1',
-        'platform': 'instagram',
-        'sender': 'instagram_user_123',
-        'from': 'ig_123456789',
-        'text': 'Hi, saw your ad on Instagram! DMing you here.',
-        'time': datetime.now().strftime("%I:%M %p"),
-        'avatar': '',
-        'unread': True
-    }
-]
+# messages_store = [
+#     {
+#         'id': 'init_msg_1',
+#         'platform': 'whatsapp',
+#         'sender': 'New Patient (Sample)',
+#         'from': '+15550009999',
+#         'text': 'Hello! Is this the NovaSync Dental line? (Test Message sent to 555-147-9581)',
+#         'time': datetime.now().strftime("%I:%M %p"),
+#         'avatar': '',
+#         'unread': True
+#     },
+#     {
+#         'id': 'init_msg_ig_1',
+#         'platform': 'instagram',
+#         'sender': 'instagram_user_123',
+#         'from': 'ig_123456789',
+#         'text': 'Hi, saw your ad on Instagram! DMing you here.',
+#         'time': datetime.now().strftime("%I:%M %p"),
+#         'avatar': '',
+#         'unread': True
+#     }
+# ]
 
-@app.route('/api/whatsapp/send', methods=['POST'])
-def send_whatsapp_message():
-    """Send a WhatsApp message via Meta API and log it."""
-    try:
-        data = request.json
-        to_number = data.get('to')
-        message_text = data.get('text')
+# @app.route('/api/whatsapp/send', methods=['POST'])
+# def send_whatsapp_message():
+#     """Send a WhatsApp message via Meta API and log it."""
+#     try:
+#         data = request.json
+#         to_number = data.get('to')
+#         message_text = data.get('text')
         
-        if not to_number:
-            return jsonify({'error': 'Missing to number'}), 400
+#         if not to_number:
+#             return jsonify({'error': 'Missing to number'}), 400
 
-        # Send to Meta
-        token = os.getenv('VITE_WHATSAPP_ACCESS_TOKEN')
-        phone_id = os.getenv('VITE_WHATSAPP_PHONE_ID')
+#         # Send to Meta
+#         token = os.getenv('VITE_WHATSAPP_ACCESS_TOKEN')
+#         phone_id = os.getenv('VITE_WHATSAPP_PHONE_ID')
         
-        if not token or not phone_id:
-             # Fallback for demo if env vars missing
-             print("⚠️ Missing Meta credentials, simulating send.")
-        else:
-            url = f"https://graph.facebook.com/v17.0/{phone_id}/messages"
-            headers = {
-                'Authorization': f'Bearer {token}',
-                'Content-Type': 'application/json'
-            }
+#         if not token or not phone_id:
+#              # Fallback for demo if env vars missing
+#              print("⚠️ Missing Meta credentials, simulating send.")
+#         else:
+#             url = f"https://graph.facebook.com/v17.0/{phone_id}/messages"
+#             headers = {
+#                 'Authorization': f'Bearer {token}',
+#                 'Content-Type': 'application/json'
+#             }
             
-            # Decide: Text vs Template
-            template_name = data.get('template') or data.get('templateName')
+#             # Decide: Text vs Template
+#             template_name = data.get('template') or data.get('templateName')
 
-            if template_name:
-                # 1. Template Message (e.g. "hello_world")
-                payload = {
-                    "messaging_product": "whatsapp",
-                    "to": to_number,
-                    "type": "template",
-                    "template": {
-                        "name": template_name,
-                        "language": {
-                            "code": data.get('language', 'en_US')
-                        }
-                    }
-                }
-                # Log usage
-                stored_text = f"[Template: {template_name}]"
-                print(f"outbound template: {payload}")
+#             if template_name:
+#                 # 1. Template Message (e.g. "hello_world")
+#                 payload = {
+#                     "messaging_product": "whatsapp",
+#                     "to": to_number,
+#                     "type": "template",
+#                     "template": {
+#                         "name": template_name,
+#                         "language": {
+#                             "code": data.get('language', 'en_US')
+#                         }
+#                     }
+#                 }
+#                 # Log usage
+#                 stored_text = f"[Template: {template_name}]"
+#                 print(f"outbound template: {payload}")
 
-            else:
-                # 2. Freeform Text Message
-                if not message_text:
-                    return jsonify({'error': 'Missing text or template'}), 400
+#             else:
+#                 # 2. Freeform Text Message
+#                 if not message_text:
+#                     return jsonify({'error': 'Missing text or template'}), 400
                     
-                payload = {
-                    "messaging_product": "whatsapp",
-                    "to": to_number,
-                    "text": {"body": message_text}
-                }
-                stored_text = message_text
+#                 payload = {
+#                     "messaging_product": "whatsapp",
+#                     "to": to_number,
+#                     "text": {"body": message_text}
+#                 }
+#                 stored_text = message_text
 
-            resp = requests.post(url, json=payload, headers=headers)
-            print(f"Meta Send Response: {resp.status_code} - {resp.text}")
+#             resp = requests.post(url, json=payload, headers=headers)
+#             print(f"Meta Send Response: {resp.status_code} - {resp.text}")
             
-            # If we sent a template, capture that for the UI
-            if template_name:
-                message_text = stored_text
+#             # If we sent a template, capture that for the UI
+#             if template_name:
+#                 message_text = stored_text
 
-        # Store in history
-        new_msg = {
-            'id': f"sent_{int(datetime.now().timestamp())}",
-            'platform': 'whatsapp',
-            'sender': 'me', # Sent by us
-            'to': to_number, # Important for grouping
-            'text': message_text,
-            'time': 'Just now', 
-            'avatar': '',
-            'unread': False
-        }
-        messages_store.insert(0, new_msg)
+#         # Store in history
+#         new_msg = {
+#             'id': f"sent_{int(datetime.now().timestamp())}",
+#             'platform': 'whatsapp',
+#             'sender': 'me', # Sent by us
+#             'to': to_number, # Important for grouping
+#             'text': message_text,
+#             'time': 'Just now', 
+#             'avatar': '',
+#             'unread': False
+#         }
+#         messages_store.insert(0, new_msg)
         
-        return jsonify(new_msg), 200
+#         return jsonify(new_msg), 200
 
-    except Exception as e:
-        print(f"❌ Send Error: {e}")
-        return jsonify({'error': str(e)}), 500
+#     except Exception as e:
+#         print(f"❌ Send Error: {e}")
+#         return jsonify({'error': str(e)}), 500
 
-import hmac
-import hashlib
+# import hmac
+# import hashlib
 
-@app.route('/api/whatsapp/webhook', methods=['GET', 'POST'])
-def whatsapp_webhook():
-    """Receive incoming WhatsApp messages (POST) or Verify Webhook (GET)."""
-    if request.method == 'GET':
-        # Verify Token Logic
-        mode = request.args.get('hub.mode')
-        token = request.args.get('hub.verify_token')
-        challenge = request.args.get('hub.challenge')
+# @app.route('/api/whatsapp/webhook', methods=['GET', 'POST'])
+# def whatsapp_webhook():
+#     """Receive incoming WhatsApp messages (POST) or Verify Webhook (GET)."""
+#     if request.method == 'GET':
+#         # Verify Token Logic
+#         mode = request.args.get('hub.mode')
+#         token = request.args.get('hub.verify_token')
+#         challenge = request.args.get('hub.challenge')
         
-        # Make sure this matches your dashboard!
-        verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'novasync_secret')
+#         # Make sure this matches your dashboard!
+#         verify_token = os.getenv('WHATSAPP_VERIFY_TOKEN', 'novasync_secret')
         
-        if mode and token:
-            if mode == 'subscribe' and token == verify_token:
-                print("✅ WhatsApp Webhook Verified!")
-                return challenge, 200
-            else:
-                return 'Forbidden', 403
-        return 'Bad Request', 400
+#         if mode and token:
+#             if mode == 'subscribe' and token == verify_token:
+#                 print("✅ WhatsApp Webhook Verified!")
+#                 return challenge, 200
+#             else:
+#                 return 'Forbidden', 403
+#         return 'Bad Request', 400
 
-    # POST Logic (Existing)
-    try:
-        # 1. Validate Signature (Security)
-        signature = request.headers.get('X-Hub-Signature-256')
-        app_secret = os.getenv('META_APP_SECRET')
+#     # POST Logic (Existing)
+#     try:
+#         # 1. Validate Signature (Security)
+#         signature = request.headers.get('X-Hub-Signature-256')
+#         app_secret = os.getenv('META_APP_SECRET')
         
-        if app_secret:
-            if not signature:
-                print("⚠️  Webhook missing signature")
-                return 'Signature Missing', 403
+#         if app_secret:
+#             if not signature:
+#                 print("⚠️  Webhook missing signature")
+#                 return 'Signature Missing', 403
             
-            # Calculate expected signature
-            expected_hash = 'sha256=' + hmac.new(
-                key=app_secret.encode('utf-8'), 
-                msg=request.get_data(), 
-                digestmod=hashlib.sha256
-            ).hexdigest()
+#             # Calculate expected signature
+#             expected_hash = 'sha256=' + hmac.new(
+#                 key=app_secret.encode('utf-8'), 
+#                 msg=request.get_data(), 
+#                 digestmod=hashlib.sha256
+#             ).hexdigest()
             
-            if not hmac.compare_digest(signature, expected_hash):
-                print("❌ Webhook Signature Mismatch!")
-                return 'Forbidden', 403
+#             if not hmac.compare_digest(signature, expected_hash):
+#                 print("❌ Webhook Signature Mismatch!")
+#                 return 'Forbidden', 403
         
-        data = request.json
-        print(f"📩 Webhook Received: {data}")
+#         data = request.json
+#         print(f"📩 Webhook Received: {data}")
         
-        # 2. Check Object Type (WhatsApp vs Instagram)
-        obj_type = data.get('object')
+#         # 2. Check Object Type (WhatsApp vs Instagram)
+#         obj_type = data.get('object')
         
-        if obj_type == 'instagram':
-             # Route to Instagram Logic
-             if 'entry' in data:
-                 for entry in data['entry']:
-                     if 'messaging' in entry:
-                         for msg in entry['messaging']:
-                             process_instagram_event(msg)
-             return 'EVENT_RECEIVED', 200
+#         if obj_type == 'instagram':
+#              # Route to Instagram Logic
+#              if 'entry' in data:
+#                  for entry in data['entry']:
+#                      if 'messaging' in entry:
+#                          for msg in entry['messaging']:
+#                              process_instagram_event(msg)
+#              return 'EVENT_RECEIVED', 200
 
-        elif obj_type == 'whatsapp_business_account':
-            # Route to WhatsApp Logic (Existing)
-            if 'entry' in data:
-                for entry in data['entry']:
-                    for change in entry.get('changes', []):
-                        value = change.get('value', {})
-                        if 'messages' in value:
-                            for msg in value['messages']:
-                                # Extract useful info
-                                from_number = msg.get('from')
-                                msg_body = msg.get('text', {}).get('body', '')
-                                timestamp = msg.get('timestamp')
+#         elif obj_type == 'whatsapp_business_account':
+#             # Route to WhatsApp Logic (Existing)
+#             if 'entry' in data:
+#                 for entry in data['entry']:
+#                     for change in entry.get('changes', []):
+#                         value = change.get('value', {})
+#                         if 'messages' in value:
+#                             for msg in value['messages']:
+#                                 # Extract useful info
+#                                 from_number = msg.get('from')
+#                                 msg_body = msg.get('text', {}).get('body', '')
+#                                 timestamp = msg.get('timestamp')
                                 
-                                # Create a simplified message object
-                                new_msg = {
-                                    'id': msg.get('id'),
-                                    'platform': 'whatsapp',
-                                    'sender': value.get('contacts', [{}])[0].get('profile', {}).get('name', from_number),
-                                    'from': from_number,
-                                    'text': msg_body,
-                                    'time': 'Just now', 
-                                    'avatar': '',
-                                    'unread': True
-                                }
+#                                 # Create a simplified message object
+#                                 new_msg = {
+#                                     'id': msg.get('id'),
+#                                     'platform': 'whatsapp',
+#                                     'sender': value.get('contacts', [{}])[0].get('profile', {}).get('name', from_number),
+#                                     'from': from_number,
+#                                     'text': msg_body,
+#                                     'time': 'Just now', 
+#                                     'avatar': '',
+#                                     'unread': True
+#                                 }
                                 
-                                messages_store.insert(0, new_msg) # Add to start of list
-                                print(f"✅ Saved WhatsApp message: {msg_body}")
+#                                 messages_store.insert(0, new_msg) # Add to start of list
+#                                 print(f"✅ Saved WhatsApp message: {msg_body}")
 
-            return 'EVENT_RECEIVED', 200
+#             return 'EVENT_RECEIVED', 200
         
-        else:
-            # Unknown object
-            print(f"❓ Unknown webhook object: {obj_type}")
-            return 'Not Found', 404
-    except Exception as e:
-        print(f"❌ WhatsApp Webhook Error: {e}")
-        return 'Internal Server Error', 500
+#         else:
+#             # Unknown object
+#             print(f"❓ Unknown webhook object: {obj_type}")
+#             return 'Not Found', 404
+#     except Exception as e:
+#         print(f"❌ WhatsApp Webhook Error: {e}")
+#         return 'Internal Server Error', 500
 
 
-@app.route('/api/instagram/webhook', methods=['GET'])
-def verify_instagram_webhook():
-    """Verify webhook for Instagram (Meta)."""
-    mode = request.args.get('hub.mode')
-    token = request.args.get('hub.verify_token')
-    challenge = request.args.get('hub.challenge')
+# @app.route('/api/instagram/webhook', methods=['GET'])
+# def verify_instagram_webhook():
+#     """Verify webhook for Instagram (Meta)."""
+#     mode = request.args.get('hub.mode')
+#     token = request.args.get('hub.verify_token')
+#     challenge = request.args.get('hub.challenge')
     
-    # Can reuse the same verify token or distinct one
-    verify_token = os.getenv('INSTAGRAM_VERIFY_TOKEN', os.getenv('WHATSAPP_VERIFY_TOKEN', 'nova_sync_secret'))
+#     # Can reuse the same verify token or distinct one
+#     verify_token = os.getenv('INSTAGRAM_VERIFY_TOKEN', os.getenv('WHATSAPP_VERIFY_TOKEN', 'nova_sync_secret'))
     
-    if mode and token:
-        if mode == 'subscribe' and token == verify_token:
-            print("✅ Instagram Webhook Verified!")
-            return challenge, 200
-        else:
-            return 'Forbidden', 403
-    return 'Bad Request', 400
+#     if mode and token:
+#         if mode == 'subscribe' and token == verify_token:
+#             print("✅ Instagram Webhook Verified!")
+#             return challenge, 200
+#         else:
+#             return 'Forbidden', 403
+#     return 'Bad Request', 400
 
-@app.route('/api/instagram/webhook', methods=['POST'])
-def instagram_webhook():
-    """Receive incoming Instagram messages."""
-    try:
-        data = request.json
-        print(f"📸 Instagram Webhook: {data}")
+# @app.route('/api/instagram/webhook', methods=['POST'])
+# def instagram_webhook():
+#     """Receive incoming Instagram messages."""
+#     try:
+#         data = request.json
+#         print(f"📸 Instagram Webhook: {data}")
         
-        if 'entry' in data:
-            for entry in data['entry']:
-                # Instagram structure is slightly different often, or uses 'messaging'
-                if 'messaging' in entry:
-                    for msg in entry['messaging']:
-                         process_instagram_event(msg)
-                elif 'changes' in entry:
-                     # Some IG events come as changes
-                     for change in entry['changes']:
-                         val = change.get('value', {})
-                         if 'messages' in val:
-                             for m in val['messages']:
-                                 process_instagram_message_value(m)
+#         if 'entry' in data:
+#             for entry in data['entry']:
+#                 # Instagram structure is slightly different often, or uses 'messaging'
+#                 if 'messaging' in entry:
+#                     for msg in entry['messaging']:
+#                          process_instagram_event(msg)
+#                 elif 'changes' in entry:
+#                      # Some IG events come as changes
+#                      for change in entry['changes']:
+#                          val = change.get('value', {})
+#                          if 'messages' in val:
+#                              for m in val['messages']:
+#                                  process_instagram_message_value(m)
 
                                  
                                  
-        return 'EVENT_RECEIVED', 200
-    except Exception as e:
-        print(f"❌ Instagram Webhook Error: {e}")
-        return 'Internal Server Error', 500
+#         return 'EVENT_RECEIVED', 200
+#     except Exception as e:
+#         print(f"❌ Instagram Webhook Error: {e}")
+#         return 'Internal Server Error', 500
 
-def process_instagram_event(msg):
-    """Refined processor for standard IG messaging events"""
-    sender_id = msg.get('sender', {}).get('id')
-    recipient_id = msg.get('recipient', {}).get('id')
+# def process_instagram_event(msg):
+#     """Refined processor for standard IG messaging events"""
+#     sender_id = msg.get('sender', {}).get('id')
+#     recipient_id = msg.get('recipient', {}).get('id')
     
-    if 'message' in msg:
-        message_obj = msg['message']
-        text = message_obj.get('text', '')
-        mid = message_obj.get('mid')
+#     if 'message' in msg:
+#         message_obj = msg['message']
+#         text = message_obj.get('text', '')
+#         mid = message_obj.get('mid')
         
-        if not text:
-             return # Skip non-text for now
+#         if not text:
+#              return # Skip non-text for now
 
-        new_msg = {
-            'id': mid,
-            'platform': 'instagram',
-            'sender': 'Instagram User', # Ideally fetch profile
-            'from': sender_id,
-            'text': text,
-            'time': 'Just now',
-            'avatar': '',
-            'unread': True
-        }
-        messages_store.insert(0, new_msg)
-        print(f"✅ Saved Instagram message: {text}")
+#         new_msg = {
+#             'id': mid,
+#             'platform': 'instagram',
+#             'sender': 'Instagram User', # Ideally fetch profile
+#             'from': sender_id,
+#             'text': text,
+#             'time': 'Just now',
+#             'avatar': '',
+#             'unread': True
+#         }
+#         messages_store.insert(0, new_msg)
+#         print(f"✅ Saved Instagram message: {text}")
 
-def process_instagram_message_value(msg):
-    """Handle IG messages coming from 'changes' payload"""
-    # Reuse valid logic
-    process_instagram_event(msg)
+# def process_instagram_message_value(msg):
+#     """Handle IG messages coming from 'changes' payload"""
+#     # Reuse valid logic
+#     process_instagram_event(msg)
 
-@app.route('/api/instagram/send', methods=['POST'])
-def send_instagram_message():
-    """Send Instagram DM via Graph API."""
-    try:
-        data = request.json
-        to_id = data.get('to')
-        message_text = data.get('text')
+# @app.route('/api/instagram/send', methods=['POST'])
+# def send_instagram_message():
+#     """Send Instagram DM via Graph API."""
+#     try:
+#         data = request.json
+#         to_id = data.get('to')
+#         message_text = data.get('text')
         
-        if not to_id or not message_text:
-            return jsonify({'error': 'Missing to or text'}), 400
+#         if not to_id or not message_text:
+#             return jsonify({'error': 'Missing to or text'}), 400
 
-        token = os.getenv('VITE_INSTAGRAM_ACCESS_TOKEN')
-        # We need the Instagram Business Account ID to send messages, NOT 'me'
-        # 'me' refers to the Facebook User owning the token
-        ig_account_id = os.getenv('VITE_INSTAGRAM_ACCOUNT_ID') 
+#         token = os.getenv('VITE_INSTAGRAM_ACCESS_TOKEN')
+#         # We need the Instagram Business Account ID to send messages, NOT 'me'
+#         # 'me' refers to the Facebook User owning the token
+#         ig_account_id = os.getenv('VITE_INSTAGRAM_ACCOUNT_ID') 
         
-        if not token or not ig_account_id:
-             print("⚠️ Missing Instagram Token or Account ID")
-             # Return error in production, simulating success for demo if needed
-             if not token: print("  - Missing Token")
-             if not ig_account_id: print("  - Missing Account ID")
-        else:
-            # Graph API for IG Send
-            # URL format: https://graph.facebook.com/v17.0/{ig-user-id}/messages
-            url = f"https://graph.facebook.com/v17.0/{ig_account_id}/messages"
-            headers = {
-                'Authorization': f'Bearer {token}',
-                'Content-Type': 'application/json'
-            }
-            payload = {
-                "recipient": {"id": to_id},
-                "message": {"text": message_text}
-            }
-            resp = requests.post(url, json=payload, headers=headers)
-            print(f"IG Send Response: {resp.status_code} - {resp.text}")
+#         if not token or not ig_account_id:
+#              print("⚠️ Missing Instagram Token or Account ID")
+#              # Return error in production, simulating success for demo if needed
+#              if not token: print("  - Missing Token")
+#              if not ig_account_id: print("  - Missing Account ID")
+#         else:
+#             # Graph API for IG Send
+#             # URL format: https://graph.facebook.com/v17.0/{ig-user-id}/messages
+#             url = f"https://graph.facebook.com/v17.0/{ig_account_id}/messages"
+#             headers = {
+#                 'Authorization': f'Bearer {token}',
+#                 'Content-Type': 'application/json'
+#             }
+#             payload = {
+#                 "recipient": {"id": to_id},
+#                 "message": {"text": message_text}
+#             }
+#             resp = requests.post(url, json=payload, headers=headers)
+#             print(f"IG Send Response: {resp.status_code} - {resp.text}")
 
-        new_msg = {
-            'id': f"sent_ig_{int(datetime.now().timestamp())}",
-            'platform': 'instagram',
-            'sender': 'me',
-            'to': to_id,
-            'text': message_text,
-            'time': 'Just now',
-            'avatar': '',
-            'unread': False
-        }
-        messages_store.insert(0, new_msg)
+#         new_msg = {
+#             'id': f"sent_ig_{int(datetime.now().timestamp())}",
+#             'platform': 'instagram',
+#             'sender': 'me',
+#             'to': to_id,
+#             'text': message_text,
+#             'time': 'Just now',
+#             'avatar': '',
+#             'unread': False
+#         }
+#         messages_store.insert(0, new_msg)
         
-        return jsonify(new_msg), 200
+#         return jsonify(new_msg), 200
 
-    except Exception as e:
-        print(f"❌ IG Send Error: {e}")
-        return jsonify({'error': str(e)}), 500
+#     except Exception as e:
+#         print(f"❌ IG Send Error: {e}")
+#         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/meta/campaigns', methods=['GET'])
-def get_meta_campaigns():
-    """Fetch campaigns from Meta Ads via Backend Proxy."""
-    try:
-        # Check standard and VITE_ prefixed variables (in case user copied frontend env)
-        access_token = os.getenv('VITE_META_ACCESS_TOKEN')
+# @app.route('/api/meta/campaigns', methods=['GET'])
+# def get_meta_campaigns():
+#     """Fetch campaigns from Meta Ads via Backend Proxy."""
+#     try:
+#         # Check standard and VITE_ prefixed variables (in case user copied frontend env)
+#         access_token = os.getenv('VITE_META_ACCESS_TOKEN')
         
-        ad_account_id = os.getenv('VITE_META_AD_ACCOUNT_ID')
+#         ad_account_id = os.getenv('VITE_META_AD_ACCOUNT_ID')
 
-        if not access_token or not ad_account_id:
-            # Fallback for demo/testing if env vars missing
-            print("⚠️ Missing Meta Ads credentials in backend.")
-            return jsonify({
-                "data": [],
-                "error": "Missing backend credentials"
-            }), 200 # Return 200 to avoid frontend crash, just empty data
+#         if not access_token or not ad_account_id:
+#             # Fallback for demo/testing if env vars missing
+#             print("⚠️ Missing Meta Ads credentials in backend.")
+#             return jsonify({
+#                 "data": [],
+#                 "error": "Missing backend credentials"
+#             }), 200 # Return 200 to avoid frontend crash, just empty data
 
-        # Ensure Account ID format
-        if not ad_account_id.startswith('act_'):
-            ad_account_id = f"act_{ad_account_id}"
+#         # Ensure Account ID format
+#         if not ad_account_id.startswith('act_'):
+#             ad_account_id = f"act_{ad_account_id}"
 
-        # 1. Fetch Campaigns
-        fields = "id,name,status,effective_status,objective,spend_cap,daily_budget,lifetime_budget"
-        url = f"https://graph.facebook.com/v18.0/{ad_account_id}/campaigns"
-        params = {
-            'fields': fields,
-            'access_token': access_token,
-            'limit': 50
-        }
+#         # 1. Fetch Campaigns
+#         fields = "id,name,status,effective_status,objective,spend_cap,daily_budget,lifetime_budget"
+#         url = f"https://graph.facebook.com/v18.0/{ad_account_id}/campaigns"
+#         params = {
+#             'fields': fields,
+#             'access_token': access_token,
+#             'limit': 50
+#         }
         
-        print(f"Fetching Meta Campaigns for {ad_account_id}...")
-        response = requests.get(url, params=params)
+#         print(f"Fetching Meta Campaigns for {ad_account_id}...")
+#         response = requests.get(url, params=params)
         
-        # DEBUG LOGGING
-        print(f"DEBUG: Meta Response Code: {response.status_code}")
-        print(f"DEBUG: Meta Response Body: {response.text}")
+#         # DEBUG LOGGING
+#         print(f"DEBUG: Meta Response Code: {response.status_code}")
+#         print(f"DEBUG: Meta Response Body: {response.text}")
 
-        if response.status_code != 200:
-             print(f"❌ Meta API Error: {response.text}")
-             return jsonify({'error': 'Meta API Error', 'details': response.json()}), response.status_code
+#         if response.status_code != 200:
+#              print(f"❌ Meta API Error: {response.text}")
+#              return jsonify({'error': 'Meta API Error', 'details': response.json()}), response.status_code
 
-        data = response.json()
-        campaigns = data.get('data', [])
-        print(f"DEBUG: Found {len(campaigns)} campaigns")
+#         data = response.json()
+#         campaigns = data.get('data', [])
+#         print(f"DEBUG: Found {len(campaigns)} campaigns")
 
-        # 2. Fetch Insights for each campaign (simplified basic implementation)
-        # For production, you'd want to use a batch request or 'insights' edge on the account level
-        campaigns_with_insights = []
+#         # 2. Fetch Insights for each campaign (simplified basic implementation)
+#         # For production, you'd want to use a batch request or 'insights' edge on the account level
+#         campaigns_with_insights = []
         
-        insight_fields = "impressions,clicks,spend,ctr,cpc,cpp,cpm,reach,frequency,actions,cost_per_action_type"
+#         insight_fields = "impressions,clicks,spend,ctr,cpc,cpp,cpm,reach,frequency,actions,cost_per_action_type"
         
-        for camp in campaigns:
-            camp_id = camp.get('id')
-            ins_url = f"https://graph.facebook.com/v18.0/{camp_id}/insights"
-            ins_params = {
-                'fields': insight_fields,
-                'date_preset': 'last_30d',
-                'access_token': access_token
-            }
-            ins_res = requests.get(ins_url, params=ins_params)
-            insights_data = ins_res.json().get('data', [])
+#         for camp in campaigns:
+#             camp_id = camp.get('id')
+#             ins_url = f"https://graph.facebook.com/v18.0/{camp_id}/insights"
+#             ins_params = {
+#                 'fields': insight_fields,
+#                 'date_preset': 'last_30d',
+#                 'access_token': access_token
+#             }
+#             ins_res = requests.get(ins_url, params=ins_params)
+#             insights_data = ins_res.json().get('data', [])
             
-            # Attach insights directly to campaign object
-            camp['insights'] = insights_data[0] if insights_data else {}
-            campaigns_with_insights.append(camp)
+#             # Attach insights directly to campaign object
+#             camp['insights'] = insights_data[0] if insights_data else {}
+#             campaigns_with_insights.append(camp)
 
-        return jsonify({'data': campaigns_with_insights}), 200
+#         return jsonify({'data': campaigns_with_insights}), 200
 
-    except Exception as e:
-        print(f"❌ Meta Proxy Error: {e}")
-        return jsonify({'error': str(e)}), 500
+#     except Exception as e:
+#         print(f"❌ Meta Proxy Error: {e}")
+#         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/messages', methods=['GET'])
 def get_messages():
