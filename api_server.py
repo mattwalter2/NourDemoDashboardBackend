@@ -86,6 +86,8 @@ def initiate_call():
 def get_vapi_calls():
     try:
         limit = request.args.get('limit', 50)
+        assistant_id = os.getenv('VAPI_ASSISTANT_ID') # Enforce backend-side filtering
+
         api_key = os.getenv('VAPI_API_KEY')
         
         if not api_key:
@@ -96,8 +98,12 @@ def get_vapi_calls():
             'Content-Type': 'application/json'
         }
         
-        print(f"Fetching calls from Vapi (limit={limit})...")
-        response = requests.get(f'https://api.vapi.ai/call?limit={limit}', headers=headers)
+        url = f'https://api.vapi.ai/call?limit={limit}'
+        if assistant_id:
+            url += f'&assistantId={assistant_id}'
+        
+        print(f"Fetching calls from Vapi (limit={limit}, assistantId={assistant_id})...")
+        response = requests.get(url, headers=headers)
         
         if response.status_code == 200:
              return jsonify(response.json()), 200
