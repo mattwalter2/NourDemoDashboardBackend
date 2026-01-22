@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 
 # Load environment variables from parent directory
+# Load environment variables from parent directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 # Also load from current directory (overrides parent if present)
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -19,33 +20,6 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for React app
 
 CLINIC_TZ = "America/New_York"
-
-# Configuration
-# SHEET_ID = os.getenv('VITE_FOLLOWUP_SHEET_ID')
-# AD_SHEET_ID = os.getenv('VITE_GOOGLE_SHEET_ID') # Ad Creatives Sheet
-
-# --- UNCOMMENTED AS REQUIRED FOR APPOINTMENTS ---
-CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
-CREDENTIALS_FILE = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-
-if not CREDENTIALS_FILE:
-    print("❌ ERROR: GOOGLE_APPLICATION_CREDENTIALS not found in .env")
-    # sys.exit(1) # Commented out exit to prevent crashing if user hasn't set it yet, but it will error on usage.
-
-print(f"🔑 Using credentials: {CREDENTIALS_FILE}")
-# print(f"📊 Sheet ID: {SHEET_ID}")
-print(f"📅 Calendar ID: {CALENDAR_ID}")
-
-def get_google_service(service_name, version, scopes):
-    """Initialize Google API service."""
-    try:
-        creds = service_account.Credentials.from_service_account_file(
-            CREDENTIALS_FILE, scopes=scopes)
-        return build(service_name, version, credentials=creds)
-    except Exception as e:
-        print(f"Failed to load credentials: {e}")
-        raise e
-# -----------------------------------------------
 
 @app.route('/api/vapi/initiate-call', methods=['POST'])
 def initiate_call():
@@ -112,8 +86,6 @@ def initiate_call():
 def get_vapi_calls():
     try:
         limit = request.args.get('limit', 50)
-        assistant_id = request.args.get('assistantId') 
-
         api_key = os.getenv('VAPI_API_KEY')
         
         if not api_key:
@@ -124,12 +96,8 @@ def get_vapi_calls():
             'Content-Type': 'application/json'
         }
         
-        url = f'https://api.vapi.ai/call?limit={limit}'
-        if assistant_id:
-            url += f'&assistantId={assistant_id}'
-
-        print(f"Fetching calls from Vapi (limit={limit}, assistantId={assistant_id})...")
-        response = requests.get(url, headers=headers)
+        print(f"Fetching calls from Vapi (limit={limit})...")
+        response = requests.get(f'https://api.vapi.ai/call?limit={limit}', headers=headers)
         
         if response.status_code == 200:
              return jsonify(response.json()), 200
@@ -139,32 +107,6 @@ def get_vapi_calls():
              
     except Exception as e:
         print(f"Error in get_vapi_calls: {e}")
-        return jsonify({'error': str(e)}), 500
-@app.route('/api/vapi/calls/<call_id>', methods=['GET'])
-def get_vapi_call_by_id(call_id):
-    try:
-        api_key = os.getenv('VAPI_API_KEY')
-        
-        if not api_key:
-             return jsonify({'error': 'Server misconfiguration: Missing VAPI_API_KEY'}), 500
-
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json'
-        }
-        
-        url = f'https://api.vapi.ai/call/{call_id}'
-        print(f"Fetching call details for {call_id}...")
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code == 200:
-             return jsonify(response.json()), 200
-        else:
-             print(f"Vapi Error: {response.text}")
-             return jsonify({'error': 'Vapi Error', 'details': response.text}), response.status_code
-             
-    except Exception as e:
-        print(f"Error in get_vapi_call_by_id: {e}")
         return jsonify({'error': str(e)}), 500
 
 # def format_lead_data(row, headers, index):
