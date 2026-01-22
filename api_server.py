@@ -140,7 +140,32 @@ def get_vapi_calls():
     except Exception as e:
         print(f"Error in get_vapi_calls: {e}")
         return jsonify({'error': str(e)}), 500
+@app.route('/api/vapi/calls/<call_id>', methods=['GET'])
+def get_vapi_call_by_id(call_id):
+    try:
+        api_key = os.getenv('VAPI_API_KEY')
+        
+        if not api_key:
+             return jsonify({'error': 'Server misconfiguration: Missing VAPI_API_KEY'}), 500
 
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        url = f'https://api.vapi.ai/call/{call_id}'
+        print(f"Fetching call details for {call_id}...")
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+             return jsonify(response.json()), 200
+        else:
+             print(f"Vapi Error: {response.text}")
+             return jsonify({'error': 'Vapi Error', 'details': response.text}), response.status_code
+             
+    except Exception as e:
+        print(f"Error in get_vapi_call_by_id: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # def format_lead_data(row, headers, index):
 #     """Format raw sheet row into a structured dictionary."""
