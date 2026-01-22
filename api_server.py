@@ -117,7 +117,6 @@ if not CREDENTIALS_FILE:
     sys.exit(1)
 
 print(f"🔑 Using credentials: {CREDENTIALS_FILE}")
-print(f"📊 Sheet ID: {SHEET_ID}")
 print(f"📅 Calendar ID: {CALENDAR_ID}")
 
 def get_google_service(service_name, version, scopes):
